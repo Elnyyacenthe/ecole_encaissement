@@ -55,6 +55,8 @@ class ReceiptScreen extends ConsumerWidget {
           return Card(
             child: PdfPreview(
               canChangeOrientation: false,
+              canChangePageFormat: false,
+              initialPageFormat: receiptPageFormat(d),
               pdfFileName: 'recu_${d.invoiceNumber}.pdf',
               build: (format) async => buildReceiptPdf(
                 d,

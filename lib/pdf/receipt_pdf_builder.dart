@@ -9,12 +9,33 @@ import '../models/receipt_data.dart';
 import 'pdf_widgets.dart';
 import 'receipt_labels.dart';
 
+/// A5-width page sized just tall enough for this receipt's actual content
+/// (1 to 4 fee lines, optional due dates, optional ANNULÉ banner) — instead
+/// of a fixed A4/A5 height that leaves most of the sheet blank. Generous
+/// per-element estimates are used so nothing gets clipped; the numbers are
+/// derived from the exact widgets/paddings in [buildReceiptPdf] below.
+PdfPageFormat receiptPageFormat(ReceiptData data) {
+  const width = 420.0; // A5 width
+  var height = 300.0; // margins + header + divider + title + spacers
+  height += 65; // two-column info block (up to 4 kv rows on one side)
+  height += 30; // table header row + spacing before/after
+  height += data.lines.length * 24; // one row per poste
+  height += data.lines
+          .where((l) => l.dateLimite != null && l.difference > 0)
+          .length *
+      14; // one due-date line per unpaid poste
+  height += 45; // "reste sur l'année" + "total payé ce jour" block
+  if (data.isCancelled) height += 60; // ANNULÉ banner
+  return PdfPageFormat(width, height);
+}
+
 /// One-page receipt whose language follows the student's section.
 Future<Uint8List> buildReceiptPdf(
   ReceiptData data, {
   Uint8List? logo,
-  PdfPageFormat format = PdfPageFormat.a5,
+  PdfPageFormat? format,
 }) async {
+  format ??= receiptPageFormat(data);
   final labels = ReceiptLabels.forSection(Section.fromDb(data.student.section));
   final niveau = Niveau.fromDb(data.student.niveau);
   final doc = pw.Document(title: '${labels.title} ${data.invoiceNumber}');

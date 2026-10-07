@@ -8,13 +8,15 @@ import '../models/tariff.dart';
 import '../repositories/reports_repository.dart';
 import 'receipt_labels.dart';
 
-/// Internal report (French only): every student who has not fully paid [poste].
+/// Internal report (French only): every student who has not fully paid
+/// [poste] — the whole school, or just [classeLabel] when scoped "par classe".
 Future<Uint8List> buildUnpaidReportPdf({
   required List<UnpaidRow> rows,
   required Poste poste,
   required String schoolYearLabel,
   DateTime? asOf,
   Uint8List? logo,
+  String? classeLabel,
 }) async {
   final doc = pw.Document(title: 'Impayés - ${poste.labelFr}');
   final now = DateTime.now();
@@ -61,11 +63,13 @@ Future<Uint8List> buildUnpaidReportPdf({
           pw.SizedBox(height: 8),
           pw.Divider(),
           pw.Text(
-            'Rapport des impayés - ${poste.labelFr}',
+            'Rapport des impayés - ${poste.labelFr}'
+            '${classeLabel == null ? '' : ' - $classeLabel'}',
             style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold),
           ),
           pw.Text(
             "Année scolaire $schoolYearLabel - "
+            '${classeLabel ?? 'toutes les classes'} - '
             "${asOf == null ? 'tous paiements' : 'paiements au ${formatDate(asOf)}'} - "
             'édité le ${formatDate(DateTime.now())}',
             style: const pw.TextStyle(fontSize: 9),

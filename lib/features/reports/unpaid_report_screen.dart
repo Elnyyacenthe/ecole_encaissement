@@ -7,6 +7,7 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/async_value_view.dart';
 import '../../core/widgets/hscroll_table.dart';
 import '../../core/widgets/page_scaffold.dart';
+import '../../models/classe.dart';
 import '../../models/tariff.dart';
 import '../../pdf/individual_notice_pdf_builder.dart';
 import '../../pdf/pdf_assets.dart';
@@ -48,10 +49,15 @@ class UnpaidReportScreen extends ConsumerWidget {
     final notifier = ref.read(unpaidFilterProvider.notifier);
     final report = ref.watch(unpaidReportProvider);
     final year = ref.watch(activeSchoolYearProvider).value;
+    final classes = ref.watch(classesProvider).value ?? const <Classe>[];
+    final classeLabel = filter.classeId == null
+        ? null
+        : classes.where((c) => c.id == filter.classeId).firstOrNull?.name;
 
     return PageScaffold(
       title: 'Rapport des impayés',
-      subtitle: 'Élèves n\'ayant pas encore soldé le poste choisi',
+      subtitle: 'Élèves n\'ayant pas encore soldé le poste choisi — pour '
+          'toute l\'école ou une seule classe',
       actions: [
         OutlinedButton.icon(
           onPressed: report.hasValue && report.requireValue.isNotEmpty
@@ -62,7 +68,11 @@ class UnpaidReportScreen extends ConsumerWidget {
                 )
               : null,
           icon: const Icon(Icons.assignment_ind_outlined),
-          label: const Text('Notes individuelles (toutes)'),
+          label: Text(
+            classeLabel == null
+                ? 'Notes individuelles (toute l\'école)'
+                : 'Notes individuelles ($classeLabel)',
+          ),
         ),
         FilledButton.icon(
           onPressed: report.hasValue && year != null
@@ -73,15 +83,22 @@ class UnpaidReportScreen extends ConsumerWidget {
                     schoolYearLabel: year.label,
                     asOf: filter.asOf,
                     logo: await loadLogoBytes(ref),
+                    classeLabel: classeLabel,
                   );
                   await Printing.layoutPdf(
-                    name: 'impayes_${filter.poste.dbValue.toLowerCase()}.pdf',
+                    name: 'impayes_${filter.poste.dbValue.toLowerCase()}'
+                        '${classeLabel == null ? '' : '_${classeLabel.toLowerCase().replaceAll(' ', '_')}'}'
+                        '.pdf',
                     onLayout: (_) async => bytes,
                   );
                 }
               : null,
           icon: const Icon(Icons.picture_as_pdf_outlined),
-          label: const Text('Liste collective (PDF)'),
+          label: Text(
+            classeLabel == null
+                ? 'Liste collective (toute l\'école)'
+                : 'Liste collective ($classeLabel)',
+          ),
         ),
       ],
       child: ListView(
@@ -103,6 +120,26 @@ class UnpaidReportScreen extends ConsumerWidget {
                   onChanged: (p) {
                     if (p != null) notifier.setPoste(p);
                   },
+                ),
+              ),
+              SizedBox(
+                width: 240,
+                child: DropdownButtonFormField<int?>(
+                  initialValue: filter.classeId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Classe'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text("Pour tout le monde (toute l'école)"),
+                    ),
+                    for (final c in classes)
+                      DropdownMenuItem(
+                        value: c.id,
+                        child: Text('Par classe : ${c.name}'),
+                      ),
+                  ],
+                  onChanged: notifier.setClasse,
                 ),
               ),
               OutlinedButton.icon(
@@ -131,9 +168,9 @@ class UnpaidReportScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            'La liste collective sert au suivi interne. Les notes individuelles '
-            "(une page par élève, avec toute sa situation de l'année) peuvent être "
-            'imprimées ou remises une par une, ou toutes à la fois.',
+            'Trois façons de sortir les impayés : pour tout le monde (aucune '
+            'classe choisie), par classe (menu "Classe" ci-dessus), ou '
+            'individuel (bouton note sur une seule ligne).',
             style: TextStyle(color: AppColors.textMuted, fontSize: 12.5),
           ),
           const SizedBox(height: 16),
