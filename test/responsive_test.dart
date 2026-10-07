@@ -144,6 +144,12 @@ final _baseOverrides = [
     (ref) async => [for (var i = 1; i <= 25; i++) _student(i)],
   ),
   studentProvider.overrideWith((ref, id) async => _student(1)),
+  classeHeadcountsProvider.overrideWith(
+    (ref) async => [ClasseHeadcount(classe: _classe, total: 25)],
+  ),
+  studentClassHistoryProvider.overrideWith(
+    (ref, fullName) async => [_student(1)],
+  ),
   studentSearchProvider.overrideWith(
     (ref, q) async => [for (var i = 1; i <= 8; i++) _student(i)],
   ),
@@ -202,6 +208,8 @@ const _paths = [
   '/students',
   '/students/new',
   '/students/1/edit',
+  '/students/1',
+  '/classes',
   '/payments',
   '/payments?student=1',
   '/history',
@@ -400,7 +408,11 @@ void authTests() {
           child: const CosbimpApp(),
         ),
       );
-      for (final path in ['/tariffs', '/settings/school-years']) {
+      for (final path in [
+        '/tariffs',
+        '/settings/school-years',
+        '/students/1/edit',
+      ]) {
         appRouter.go(path);
         for (var i = 0; i < 4; i++) {
           await tester.pump(const Duration(milliseconds: 200));
@@ -411,6 +423,14 @@ void authTests() {
           reason: path,
         );
       }
+      // The read-only fiche stays open to a caissier even though editing
+      // it is not.
+      appRouter.go('/students/1');
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      expect(find.text('Accès réservé aux administrateurs'), findsNothing);
+
       appRouter.go('/history');
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 200));

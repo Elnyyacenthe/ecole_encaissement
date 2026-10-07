@@ -102,6 +102,9 @@ class _StudentFormState extends ConsumerState<_StudentForm> {
   late final TextEditingController _contact2;
   Timer? _duplicateDebounce;
   List<StudentWithClasse> _duplicates = const [];
+  List<StudentWithClasse> _otherYearMatches = const [];
+  bool _dateNaissanceMissing = false;
+  bool _contactsMissing = false;
 
   /// Set when re-enrolling a former student found via the "ancien élève"
   /// search instead of creating a brand-new one: their existing row gets
@@ -153,8 +156,11 @@ class _StudentFormState extends ConsumerState<_StudentForm> {
 
   Future<void> _checkDuplicates() async {
     if (normalizeName(_name.text).isEmpty) {
-      if (mounted && _duplicates.isNotEmpty) {
-        setState(() => _duplicates = const []);
+      if (mounted && (_duplicates.isNotEmpty || _otherYearMatches.isNotEmpty)) {
+        setState(() {
+          _duplicates = const [];
+          _otherYearMatches = const [];
+        });
       }
       return;
     }
@@ -171,6 +177,20 @@ class _StudentFormState extends ConsumerState<_StudentForm> {
       // This is only a heads-up; the database itself still enforces the
       // rule on save, so a failed lookup must not block the form.
     }
+    // Only worth checking other years for a brand-new registration — a
+    // reactivation or an edit is already explicitly about one specific row.
+    if (widget.existing != null || _reactivating != null) return;
+    try {
+      final others = await ref
+          .read(studentsRepositoryProvider)
+          .findByExactNameOtherYears(
+            fullName: _name.text,
+            schoolYearId: widget.yearId,
+          );
+      if (mounted) setState(() => _otherYearMatches = others);
+    } catch (_) {
+      // Heads-up only, same as above.
+    }
   }
 
   List<StudentWithClasse> get _sameClassDuplicates =>
@@ -184,7 +204,7 @@ class _StudentFormState extends ConsumerState<_StudentForm> {
       context: context,
       initialDate: _date,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked != null) setState(() => _date = picked);
   }
@@ -243,11 +263,26 @@ class _StudentFormState extends ConsumerState<_StudentForm> {
       firstDate: DateTime(1990),
       lastDate: DateTime.now(),
     );
-    if (picked != null) setState(() => _dateNaissance = picked);
+    if (picked != null) {
+      setState(() {
+        _dateNaissance = picked;
+        _dateNaissanceMissing = false;
+      });
+    }
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    final missingDate = _dateNaissance == null;
+    final missingContacts =
+        _contact1.text.trim().isEmpty && _contact2.text.trim().isEmpty;
+    if (missingDate || missingContacts) {
+      setState(() {
+        _dateNaissanceMissing = missingDate;
+        _contactsMissing = missingContacts;
+      });
+      return;
+    }
     setState(() => _saving = true);
     final repo = ref.read(studentsRepositoryProvider);
     try {
@@ -482,6 +517,46 @@ class _StudentFormState extends ConsumerState<_StudentForm> {
                               .toList(),
                         ),
                       ],
+                      if (_otherYearMatches.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF6E0),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: const Color(0xFFF0D690),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                size: 18,
+                                color: Color(0xFF9A7B1E),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Ce nom existe déjà une autre année '
+                                      '(${_otherYearMatches.map((d) => d.schoolYearLabel).join(', ')}). '
+                                      "Si c'est le même enfant, utilisez "
+                                      '"C\'est un ancien élève ?" ci-dessus au lieu '
+                                      "d'une nouvelle fiche.",
+                                      style: const TextStyle(fontSize: 12.5),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -532,12 +607,15 @@ class _StudentFormState extends ConsumerState<_StudentForm> {
                             child: InkWell(
                               onTap: _pickDateNaissance,
                               child: InputDecorator(
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Date de naissance',
-                                  suffixIcon: Icon(
+                                  suffixIcon: const Icon(
                                     Icons.calendar_today,
                                     size: 18,
                                   ),
+                                  errorText: _dateNaissanceMissing
+                                      ? 'Obligatoire'
+                                      : null,
                                 ),
                                 child: Text(
                                   _dateNaissance == null
@@ -619,10 +697,13 @@ class _StudentFormState extends ConsumerState<_StudentForm> {
                       const SizedBox(height: 24),
                       _SectionTitle('Contacts susceptibles de chercher l\'enfant'),
                       const SizedBox(height: 4),
-                      const Text(
-                        'Si vous êtes empêché — au moins un des deux.',
+                      Text(
+                        'Si vous êtes empêché — au moins un des deux '
+                        'obligatoire.',
                         style: TextStyle(
-                          color: AppColors.textMuted,
+                          color: _contactsMissing
+                              ? AppColors.danger
+                              : AppColors.textMuted,
                           fontSize: 12,
                         ),
                       ),
@@ -634,8 +715,11 @@ class _StudentFormState extends ConsumerState<_StudentForm> {
                             child: TextFormField(
                               controller: _contact1,
                               textCapitalization: TextCapitalization.words,
-                              decoration: const InputDecoration(
+                              onChanged: (_) =>
+                                  setState(() => _contactsMissing = false),
+                              decoration: InputDecoration(
                                 labelText: 'Contact 1',
+                                errorText: _contactsMissing ? '' : null,
                               ),
                             ),
                           ),
@@ -644,8 +728,11 @@ class _StudentFormState extends ConsumerState<_StudentForm> {
                             child: TextFormField(
                               controller: _contact2,
                               textCapitalization: TextCapitalization.words,
-                              decoration: const InputDecoration(
+                              onChanged: (_) =>
+                                  setState(() => _contactsMissing = false),
+                              decoration: InputDecoration(
                                 labelText: 'Contact 2',
+                                errorText: _contactsMissing ? '' : null,
                               ),
                             ),
                           ),

@@ -28,6 +28,14 @@ enum Niveau {
   };
 }
 
+/// A classe with how many non-cancelled students it has for a given year —
+/// shown on the Classes screen.
+class ClasseHeadcount {
+  final Classe classe;
+  final int total;
+  const ClasseHeadcount({required this.classe, required this.total});
+}
+
 class Classe {
   final int id;
   final String name;

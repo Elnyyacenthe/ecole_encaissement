@@ -69,6 +69,7 @@ class StudentsListScreen extends ConsumerWidget {
     final filter = ref.watch(studentFilterProvider);
     final me = ref.watch(authProvider);
     final canCancel = me != null;
+    final canEdit = me?.role.hasAdminRights ?? false;
 
     return PageScaffold(
       title: 'Élèves',
@@ -162,7 +163,11 @@ class StudentsListScreen extends ConsumerWidget {
                                     )
                                   : null,
                               cells: [
-                                DataCell(Text(s.student.matricule)),
+                                DataCell(
+                                  Text(s.student.matricule),
+                                  onTap: () =>
+                                      context.go('/students/${s.student.id}'),
+                                ),
                                 DataCell(
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -202,8 +207,14 @@ class StudentsListScreen extends ConsumerWidget {
                                       ],
                                     ],
                                   ),
+                                  onTap: () =>
+                                      context.go('/students/${s.student.id}'),
                                 ),
-                                DataCell(Text(s.classeName)),
+                                DataCell(
+                                  Text(s.classeName),
+                                  onTap: () =>
+                                      context.go('/students/${s.student.id}'),
+                                ),
                                 DataCell(Text(Niveau.fromDb(s.niveau).label)),
                                 DataCell(Text(Section.fromDb(s.section).label)),
                                 DataCell(
@@ -214,12 +225,24 @@ class StudentsListScreen extends ConsumerWidget {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       IconButton(
-                                        tooltip: 'Modifier',
-                                        icon: const Icon(Icons.edit_outlined),
+                                        tooltip: 'Consulter',
+                                        icon: const Icon(
+                                          Icons.visibility_outlined,
+                                        ),
                                         onPressed: () => context.go(
-                                          '/students/${s.student.id}/edit',
+                                          '/students/${s.student.id}',
                                         ),
                                       ),
+                                      if (canEdit)
+                                        IconButton(
+                                          tooltip: 'Modifier',
+                                          icon: const Icon(
+                                            Icons.edit_outlined,
+                                          ),
+                                          onPressed: () => context.go(
+                                            '/students/${s.student.id}/edit',
+                                          ),
+                                        ),
                                       IconButton(
                                         tooltip: 'Encaisser ou retirer un reçu',
                                         icon: const Icon(Icons.point_of_sale),

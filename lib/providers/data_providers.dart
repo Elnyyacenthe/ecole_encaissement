@@ -27,6 +27,15 @@ final classesProvider = FutureProvider<List<Classe>>((ref) async {
   return ref.watch(classesRepositoryProvider).all();
 });
 
+final classeHeadcountsProvider = FutureProvider<List<ClasseHeadcount>>((
+  ref,
+) async {
+  await ref.watch(dbReadyProvider.future);
+  final year = await ref.watch(activeSchoolYearProvider.future);
+  if (year == null) return const [];
+  return ref.watch(classesRepositoryProvider).headcounts(year.id);
+});
+
 final schoolYearsProvider = FutureProvider<List<SchoolYear>>((ref) async {
   await ref.watch(dbReadyProvider.future);
   return ref.watch(schoolYearsRepositoryProvider).all();
@@ -108,6 +117,17 @@ final studentProvider = FutureProvider.family<StudentWithClasse?, int>((
   await ref.watch(dbReadyProvider.future);
   return ref.watch(studentsRepositoryProvider).getById(id);
 });
+
+/// Best-effort "historique des classes par année" for the read-only fiche —
+/// every row matching this exact name, any year (see [classHistoryFor]).
+final studentClassHistoryProvider =
+    FutureProvider.family<List<StudentWithClasse>, String>((
+      ref,
+      fullName,
+    ) async {
+      await ref.watch(dbReadyProvider.future);
+      return ref.watch(studentsRepositoryProvider).classHistoryFor(fullName);
+    });
 
 /// Live search used by the cashier screen — scoped to the active school
 /// year, so students from past years (already promoted or not carried

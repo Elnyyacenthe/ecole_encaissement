@@ -94,6 +94,39 @@ class StudentsRepository {
     return rows.map(StudentWithClasse.fromRow).toList();
   }
 
+  /// Exact name matches in a DIFFERENT, non-cancelled year — a soft warning
+  /// while registering a brand-new student, in case this is really the same
+  /// child and "C'est un ancien élève ?" should have been used instead.
+  Future<List<StudentWithClasse>> findByExactNameOtherYears({
+    required String fullName,
+    required int schoolYearId,
+    int? excludeId,
+  }) async {
+    final name = normalizeName(fullName);
+    if (name.isEmpty) return const [];
+    final sql =
+        '$_selectStudent'
+        'WHERE s.full_name = ? AND s.school_year_id <> ? AND s.annule = 0 '
+        '${excludeId == null ? '' : 'AND s.id <> ? '}'
+        'ORDER BY y.label DESC';
+    final rows = await db.select(sql, [name, schoolYearId, ?excludeId]);
+    return rows.map(StudentWithClasse.fromRow).toList();
+  }
+
+  /// Every row (any year, including cancelled) matching this exact name —
+  /// the best-effort "historique des classes par année" shown on the
+  /// read-only fiche. Name-matched, not a stable identity: two different
+  /// children sharing the exact same name would appear merged here.
+  Future<List<StudentWithClasse>> classHistoryFor(String fullName) async {
+    final name = normalizeName(fullName);
+    if (name.isEmpty) return const [];
+    final rows = await db.select(
+      '$_selectStudent WHERE s.full_name = ? ORDER BY y.label DESC',
+      [name],
+    );
+    return rows.map(StudentWithClasse.fromRow).toList();
+  }
+
   /// Candidates for the "ancien élève" flow — anyone not properly settled
   /// into the active year yet: a student with no row there at all (left
   /// without being promoted, possibly years ago), or one that Promotion

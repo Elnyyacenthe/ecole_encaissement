@@ -20,6 +20,7 @@ class _Dest {
 const _gestion = [
   _Dest('/dashboard', 'Tableau de bord', Icons.dashboard_outlined),
   _Dest('/students', 'Élèves', Icons.people_alt_outlined),
+  _Dest('/classes', 'Classes', Icons.meeting_room_outlined),
   _Dest('/payments', 'Encaissement', Icons.point_of_sale),
   _Dest('/history', 'Historique', Icons.history),
   _Dest('/reports/unpaid', 'Impayés', Icons.assignment_late_outlined),
@@ -32,7 +33,10 @@ const _configuration = [
 ];
 
 bool _isAdminOnlyPath(String location) =>
-    location.startsWith('/tariffs') || location.startsWith('/settings');
+    location.startsWith('/tariffs') ||
+    location.startsWith('/settings') ||
+    // Consulting a fiche élève is open to everyone; editing one isn't.
+    (location.startsWith('/students/') && location.endsWith('/edit'));
 
 /// Below this window width the menu shrinks to an icon-only rail.
 const double kCompactWidth = 1100;
