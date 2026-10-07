@@ -41,6 +41,16 @@ CREATE TABLE IF NOT EXISTS students (
   annule_le DATETIME NULL,
   motif_annulation VARCHAR(255) NULL,
   full_name_active VARCHAR(150) GENERATED ALWAYS AS (IF(annule = 0, full_name, NULL)) STORED,
+  date_naissance DATE NULL,
+  lieu_naissance VARCHAR(150) NULL,
+  nom_pere VARCHAR(150) NULL,
+  profession_pere VARCHAR(150) NULL,
+  nom_mere VARCHAR(150) NULL,
+  profession_mere VARCHAR(150) NULL,
+  adresse_parents VARCHAR(255) NULL,
+  contact_urgence_1 VARCHAR(150) NULL,
+  contact_urgence_2 VARCHAR(150) NULL,
+  confirme TINYINT(1) NOT NULL DEFAULT 1,
   CONSTRAINT fk_students_classe FOREIGN KEY (classe_id) REFERENCES classes(id),
   CONSTRAINT fk_students_year FOREIGN KEY (school_year_id) REFERENCES school_years(id),
   INDEX idx_students_classe (classe_id),
@@ -163,6 +173,23 @@ Future<void> _ensureColumn(
   }
 }
 
+/// Drops [column] from [table] if present — the reverse of [_ensureColumn],
+/// for a field that turned out not to be wanted after all.
+Future<void> _dropColumnIfExists(
+  MySqlConnectionService db,
+  String table,
+  String column,
+) async {
+  final exists = await db.select(
+    'SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() '
+    'AND table_name = ? AND column_name = ?',
+    [table, column],
+  );
+  if (exists.isNotEmpty) {
+    await db.execute('ALTER TABLE $table DROP COLUMN $column');
+  }
+}
+
 /// Every table with a "cancel, never delete" record (students, payments)
 /// gets the same four audit columns.
 Future<void> _ensureCancellationColumns(
@@ -175,6 +202,42 @@ Future<void> _ensureCancellationColumns(
   await _ensureColumn(db, table, 'motif_annulation', 'VARCHAR(255) NULL');
 }
 
+/// State-civil, parents and safety fields from the paper "fiche
+/// d'inscription" — existing installs created before these existed.
+Future<void> _ensureStudentDetailColumns(MySqlConnectionService db) async {
+  await _ensureColumn(db, 'students', 'date_naissance', 'DATE NULL');
+  await _ensureColumn(db, 'students', 'lieu_naissance', 'VARCHAR(150) NULL');
+  await _ensureColumn(db, 'students', 'nom_pere', 'VARCHAR(150) NULL');
+  await _ensureColumn(db, 'students', 'profession_pere', 'VARCHAR(150) NULL');
+  await _ensureColumn(db, 'students', 'nom_mere', 'VARCHAR(150) NULL');
+  await _ensureColumn(db, 'students', 'profession_mere', 'VARCHAR(150) NULL');
+  await _ensureColumn(db, 'students', 'adresse_parents', 'VARCHAR(255) NULL');
+  await _ensureColumn(
+    db,
+    'students',
+    'contact_urgence_1',
+    'VARCHAR(150) NULL',
+  );
+  await _ensureColumn(
+    db,
+    'students',
+    'contact_urgence_2',
+    'VARCHAR(150) NULL',
+  );
+  await _ensureColumn(db, 'students', 'confirme', 'TINYINT(1) NOT NULL DEFAULT 1');
+  // The "Santé" fields (soins médicaux, vaccins, allergies) were dropped
+  // again shortly after being added: remove them from any install that
+  // picked up that brief version.
+  for (final column in [
+    'soins_medicaux',
+    'vaccins',
+    'allergies',
+    'allergies_details',
+  ]) {
+    await _dropColumnIfExists(db, 'students', column);
+  }
+}
+
 /// Creates missing tables and seeds reference data. Safe to run on every
 /// startup and from several PCs at once (every statement is idempotent).
 Future<void> bootstrapDatabase(MySqlConnectionService db) async {
@@ -183,6 +246,7 @@ Future<void> bootstrapDatabase(MySqlConnectionService db) async {
   }
   await _ensureCancellationColumns(db, 'students');
   await _ensureCancellationColumns(db, 'payments');
+  await _ensureStudentDetailColumns(db);
 
   // A deposit spread over several postes is several rows sharing one invoice
   // number, so the invoice number can no longer be unique on its own.

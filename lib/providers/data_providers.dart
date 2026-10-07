@@ -7,6 +7,7 @@ import '../models/classe.dart';
 import '../models/invoice_summary.dart';
 import '../models/payment.dart';
 import '../models/payment_situation.dart';
+import '../models/promotion.dart';
 import '../models/receipt_data.dart';
 import '../models/school_year.dart';
 import '../models/student.dart';
@@ -108,14 +109,30 @@ final studentProvider = FutureProvider.family<StudentWithClasse?, int>((
   return ref.watch(studentsRepositoryProvider).getById(id);
 });
 
-/// Live search used by the cashier screen (all years, any filter ignored).
+/// Live search used by the cashier screen — scoped to the active school
+/// year, so students from past years (already promoted or not carried
+/// forward) don't pile up in the results year after year.
 final studentSearchProvider =
     FutureProvider.family<List<StudentWithClasse>, String>((ref, query) async {
       await ref.watch(dbReadyProvider.future);
       if (query.trim().isEmpty) return const [];
+      final year = await ref.watch(activeSchoolYearProvider.future);
       return ref
           .watch(studentsRepositoryProvider)
-          .search(query: query, limit: 20);
+          .search(query: query, schoolYearId: year?.id, limit: 20);
+    });
+
+/// Students not enrolled in the active year — used by the "ancien élève"
+/// reactivation flow on the registration screen. An empty query lists them
+/// all (most recent year first) rather than requiring a search first.
+final formerStudentSearchProvider =
+    FutureProvider.family<List<StudentWithClasse>, String>((ref, query) async {
+      await ref.watch(dbReadyProvider.future);
+      final year = await ref.watch(activeSchoolYearProvider.future);
+      if (year == null) return const [];
+      return ref
+          .watch(studentsRepositoryProvider)
+          .searchFormerStudents(activeYearId: year.id, query: query);
     });
 
 // --- Payments -------------------------------------------------------------
@@ -189,17 +206,28 @@ final dashboardStatsProvider = FutureProvider<DashboardStats?>((ref) async {
 class UnpaidFilter {
   final Poste poste;
   final DateTime? asOf;
-  const UnpaidFilter({this.poste = Poste.tranche1, this.asOf});
+
+  /// Null = "pour tout le monde" (whole school); set = "par classe".
+  final int? classeId;
+  const UnpaidFilter({this.poste = Poste.tranche1, this.asOf, this.classeId});
 }
 
 class UnpaidFilterNotifier extends Notifier<UnpaidFilter> {
   @override
   UnpaidFilter build() => const UnpaidFilter();
 
-  void setPoste(Poste poste) =>
-      state = UnpaidFilter(poste: poste, asOf: state.asOf);
-  void setAsOf(DateTime? asOf) =>
-      state = UnpaidFilter(poste: state.poste, asOf: asOf);
+  void setPoste(Poste poste) => state = UnpaidFilter(
+    poste: poste,
+    asOf: state.asOf,
+    classeId: state.classeId,
+  );
+  void setAsOf(DateTime? asOf) => state = UnpaidFilter(
+    poste: state.poste,
+    asOf: asOf,
+    classeId: state.classeId,
+  );
+  void setClasse(int? classeId) =>
+      state = UnpaidFilter(poste: state.poste, asOf: state.asOf, classeId: classeId);
 }
 
 final unpaidFilterProvider =
@@ -214,8 +242,26 @@ final unpaidReportProvider = FutureProvider<List<UnpaidRow>>((ref) async {
   if (year == null) return const [];
   return ref
       .watch(reportsRepositoryProvider)
-      .unpaid(schoolYearId: year.id, poste: filter.poste, asOf: filter.asOf);
+      .unpaid(
+        schoolYearId: year.id,
+        poste: filter.poste,
+        asOf: filter.asOf,
+        classeId: filter.classeId,
+      );
 });
+
+// --- Promotion (bulk re-enrolment into a new school year) -----------------
+
+final promotionPreviewProvider =
+    FutureProvider.family<
+      List<PromotionCandidate>,
+      ({int fromYearId, int toYearId})
+    >((ref, q) async {
+      await ref.watch(dbReadyProvider.future);
+      return ref
+          .watch(promotionRepositoryProvider)
+          .preview(fromYearId: q.fromYearId, toYearId: q.toYearId);
+    });
 
 // --- Users ----------------------------------------------------------------
 

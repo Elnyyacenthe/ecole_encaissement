@@ -168,7 +168,7 @@ LIMIT $limit
     }
     return db.transaction((ctx) async {
       final locked = await ctx.query(
-        'SELECT annule FROM students WHERE id = ? FOR UPDATE',
+        'SELECT annule, confirme FROM students WHERE id = ? FOR UPDATE',
         [studentId],
       );
       if (locked.isEmpty) {
@@ -178,6 +178,13 @@ LIMIT $limit
         throw PaymentException(
           'Cette inscription a été annulée ; aucun encaissement ne peut y être ajouté.',
         );
+      }
+      // A student promoted in bulk is provisional until proven — a real
+      // payment is exactly that proof, so it confirms them automatically.
+      if ((locked.first['confirme'] as int) == 0) {
+        await ctx.query('UPDATE students SET confirme = 1 WHERE id = ?', [
+          studentId,
+        ]);
       }
 
       final rows = await ctx.query(

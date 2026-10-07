@@ -49,6 +49,19 @@ class StudentsListScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _confirm(BuildContext context, WidgetRef ref, int studentId) async {
+    try {
+      await ref.read(studentsRepositoryProvider).confirm(studentId);
+      ref.invalidate(studentsProvider);
+      ref.invalidate(unpaidReportProvider);
+      if (context.mounted) {
+        _snack(context, 'Inscription confirmée — comptera dans les impayés.');
+      }
+    } catch (e) {
+      if (context.mounted) _snack(context, '$e');
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final students = ref.watch(studentsProvider);
@@ -61,6 +74,11 @@ class StudentsListScreen extends ConsumerWidget {
       title: 'Élèves',
       subtitle: 'Liste des élèves de l\'année scolaire active',
       actions: [
+        OutlinedButton.icon(
+          onPressed: () => context.go('/students/promotion'),
+          icon: const Icon(Icons.move_up_outlined),
+          label: const Text('Promouvoir depuis une année précédente'),
+        ),
         FilledButton.icon(
           onPressed: () => context.go('/students/new'),
           icon: const Icon(Icons.person_add_alt_1_outlined),
@@ -169,6 +187,18 @@ class StudentsListScreen extends ConsumerWidget {
                                               'Motif : ${s.student.cancellation!.reason}',
                                           child: const CancelledBadge(),
                                         ),
+                                      ] else if (!s.student.confirme) ...[
+                                        const SizedBox(width: 8),
+                                        const Tooltip(
+                                          message:
+                                              "Créée par une promotion en masse : pas encore "
+                                              "comptée dans les impayés tant qu'aucun "
+                                              "paiement ou confirmation n'a eu lieu.",
+                                          child: CancelledBadge(
+                                            label: 'PROVISOIRE',
+                                            color: AppColors.gold,
+                                          ),
+                                        ),
                                       ],
                                     ],
                                   ),
@@ -197,6 +227,19 @@ class StudentsListScreen extends ConsumerWidget {
                                           '/payments?student=${s.student.id}',
                                         ),
                                       ),
+                                      if (!s.student.isCancelled &&
+                                          !s.student.confirme)
+                                        IconButton(
+                                          tooltip:
+                                              "Confirmer l'inscription (compte "
+                                              'maintenant dans les impayés)',
+                                          icon: const Icon(
+                                            Icons.check_circle_outline,
+                                            color: AppColors.gold,
+                                          ),
+                                          onPressed: () =>
+                                              _confirm(context, ref, s.student.id),
+                                        ),
                                       if (canCancel && !s.student.isCancelled)
                                         IconButton(
                                           tooltip: "Annuler l'inscription",

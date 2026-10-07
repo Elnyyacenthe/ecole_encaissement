@@ -62,24 +62,30 @@ Future<String?> showCancelReasonDialog(
   ).whenComplete(controller.dispose);
 }
 
-/// Small red "ANNULÉ(E)" badge shown wherever a cancelled record appears.
+/// Small colored status badge, e.g. "ANNULÉ" (default, red) or "PROVISOIRE"
+/// (gold) — shown wherever a flagged record appears.
 class CancelledBadge extends StatelessWidget {
   final String label;
-  const CancelledBadge({super.key, this.label = 'ANNULÉ'});
+  final Color color;
+  const CancelledBadge({
+    super.key,
+    this.label = 'ANNULÉ',
+    this.color = AppColors.danger,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.danger.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.danger.withValues(alpha: 0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: AppColors.danger,
+        style: TextStyle(
+          color: color,
           fontWeight: FontWeight.w700,
           fontSize: 11,
         ),
