@@ -6,6 +6,7 @@ import '../../features/payments/history_screen.dart';
 import '../../features/payments/receipt_screen.dart';
 import '../../features/reports/unpaid_report_screen.dart';
 import '../../features/settings/school_year_settings_screen.dart';
+import '../../features/students/promotion_screen.dart';
 import '../../features/students/student_form_screen.dart';
 import '../../features/students/students_list_screen.dart';
 import '../../features/tariffs/tariffs_screen.dart';
@@ -34,6 +35,10 @@ final appRouter = GoRouter(
           builder: (_, state) => StudentFormScreen(
             studentId: int.parse(state.pathParameters['id']!),
           ),
+        ),
+        GoRoute(
+          path: '/students/promotion',
+          builder: (_, _) => const PromotionScreen(),
         ),
         GoRoute(
           path: '/payments',

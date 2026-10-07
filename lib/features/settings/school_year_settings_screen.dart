@@ -1,6 +1,7 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/async_value_view.dart';
@@ -62,7 +63,9 @@ class _State extends ConsumerState<SchoolYearSettingsScreen> {
           const SizedBox(height: 4),
           const Text(
             'Créer une année copie les tarifs par défaut et la rend active. '
-            'Les matricules repartent de 001 chaque année.',
+            'Les matricules repartent de 001 chaque année. Les élèves ne '
+            'sont pas reconduits automatiquement : utilisez "Promouvoir" '
+            'ci-dessous pour reprendre la liste de l\'année précédente.',
             style: TextStyle(color: AppColors.textMuted),
           ),
           const SizedBox(height: 12),
@@ -85,6 +88,11 @@ class _State extends ConsumerState<SchoolYearSettingsScreen> {
               FilledButton(
                 onPressed: _create,
                 child: const Text('Créer et activer'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => context.go('/students/promotion'),
+                icon: const Icon(Icons.move_up_outlined),
+                label: const Text('Promouvoir les élèves'),
               ),
             ],
           ),

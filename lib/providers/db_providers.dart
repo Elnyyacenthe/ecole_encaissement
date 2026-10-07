@@ -8,6 +8,7 @@ import '../core/db/embedded_server.dart';
 import '../core/db/mysql_connection_service.dart';
 import '../repositories/classes_repository.dart';
 import '../repositories/payments_repository.dart';
+import '../repositories/promotion_repository.dart';
 import '../repositories/reports_repository.dart';
 import '../repositories/school_years_repository.dart';
 import '../repositories/settings_repository.dart';
@@ -74,4 +75,12 @@ final reportsRepositoryProvider = Provider(
 
 final usersRepositoryProvider = Provider(
   (ref) => UsersRepository(ref.watch(dbServiceProvider)),
+);
+
+final promotionRepositoryProvider = Provider(
+  (ref) => PromotionRepository(
+    ref.watch(dbServiceProvider),
+    ref.watch(studentsRepositoryProvider),
+    ref.watch(classesRepositoryProvider),
+  ),
 );
