@@ -4,6 +4,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../core/utils/formatters.dart';
+import '../models/classe.dart';
+import '../models/school_identity.dart';
 import '../models/tariff.dart';
 import '../repositories/reports_repository.dart';
 import 'receipt_labels.dart';
@@ -17,7 +19,14 @@ Future<Uint8List> buildUnpaidReportPdf({
   DateTime? asOf,
   Uint8List? logo,
   String? classeLabel,
+  SchoolIdentity? identity,
 }) async {
+  final labels = ReceiptLabels.forSection(
+    Section.francophone,
+    schoolName: identity?.name,
+    schoolBox: identity?.box,
+    schoolPhone: identity?.phone,
+  );
   final doc = pw.Document(title: 'Impayés - ${poste.labelFr}');
   final now = DateTime.now();
   final totalReste = rows.fold<int>(0, (s, r) => s + r.reste);
@@ -46,14 +55,14 @@ Future<Uint8List> buildUnpaidReportPdf({
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
-                    ReceiptLabels.fr.schoolName,
+                    labels.schoolName,
                     style: pw.TextStyle(
                       fontSize: 13,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
                   pw.Text(
-                    '${ReceiptLabels.fr.address} - ${ReceiptLabels.fr.phone}',
+                    '${labels.address} - ${labels.phone}',
                     style: const pw.TextStyle(fontSize: 9),
                   ),
                 ],

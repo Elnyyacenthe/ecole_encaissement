@@ -17,8 +17,27 @@ class SettingsRepository {
   static const _logoKey = 'logo';
   static const maxLogoBytes = 3 * 1024 * 1024;
 
+  static const keySchoolName = 'school_name';
+  static const keySchoolBox = 'school_box';
+  static const keySchoolPhone = 'school_phone';
+  static const keyMatriculePrefix = 'matricule_prefix';
+  static const keySetupCompleted = 'setup_completed';
+
+  /// Used whenever a school hasn't set its own matricule prefix yet — keeps
+  /// the format ("26MP001") unchanged for installs created before this was
+  /// configurable.
+  static const defaultMatriculePrefix = 'MP';
+
   final MySqlConnectionService db;
   SettingsRepository(this.db);
+
+  Future<bool> isSetupCompleted() async =>
+      (await getText(keySetupCompleted)) == '1';
+
+  Future<void> markSetupCompleted() => setText(keySetupCompleted, '1');
+
+  Future<String> matriculePrefix() async =>
+      (await getText(keyMatriculePrefix)) ?? defaultMatriculePrefix;
 
   /// A short text setting (e.g. the extra backup folder), or null when unset.
   Future<String?> getText(String key) async {

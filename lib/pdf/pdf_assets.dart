@@ -4,6 +4,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/widgets/school_logo.dart';
+import '../models/school_identity.dart';
 import '../providers/data_providers.dart';
 
 /// Logo bytes for PDFs: the one saved in the database, else a bundled file,
@@ -24,4 +25,15 @@ Future<Uint8List?> loadLogoBytes(WidgetRef ref) async {
     }
   }
   return null;
+}
+
+/// The school's configured identity for printed documents, falling back to
+/// the built-in defaults (handled by [ReceiptLabels.forSection] itself)
+/// if anything goes wrong reading it.
+Future<SchoolIdentity> loadSchoolIdentity(WidgetRef ref) async {
+  try {
+    return await ref.read(schoolIdentityProvider.future);
+  } catch (_) {
+    return const SchoolIdentity(matriculePrefix: 'MP');
+  }
 }

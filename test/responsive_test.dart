@@ -9,6 +9,7 @@ import 'package:cosbimp_scolarite/models/classe.dart';
 import 'package:cosbimp_scolarite/models/invoice_summary.dart';
 import 'package:cosbimp_scolarite/models/payment.dart';
 import 'package:cosbimp_scolarite/models/payment_situation.dart';
+import 'package:cosbimp_scolarite/models/school_identity.dart';
 import 'package:cosbimp_scolarite/models/school_year.dart';
 import 'package:cosbimp_scolarite/models/student.dart';
 import 'package:cosbimp_scolarite/models/tariff.dart';
@@ -116,6 +117,9 @@ final _baseOverrides = [
   dbReadyProvider.overrideWith((ref) async {}),
   dataSyncProvider.overrideWith((ref) {}),
   logoBytesProvider.overrideWith((ref) async => null),
+  schoolIdentityProvider.overrideWith(
+    (ref) async => const SchoolIdentity(matriculePrefix: 'MP'),
+  ),
   classesProvider.overrideWith((ref) async => [_classe]),
   schoolYearsProvider.overrideWith(
     (ref) async => [
@@ -288,8 +292,9 @@ class _FakeAuth extends AuthNotifier {
 
 /// Every provider faked, plus the given logged-in user (null = logged out).
 // ignore: strict_top_level_inference
-_overrides(AppUser? user, {bool isServer = true}) => [
+_overrides(AppUser? user, {bool isServer = true, bool setupCompleted = true}) => [
   ..._baseOverrides,
+  setupCompletedProvider.overrideWith((ref) async => setupCompleted),
   authProvider.overrideWith(() => _FakeAuth(user)),
   usersProvider.overrideWith((ref) async => [_admin, _caissier]),
   defaultAdminHintProvider.overrideWith((ref) async => true),
@@ -337,6 +342,60 @@ void authTests() {
       }
       expect(find.text('Se connecter'), findsOneWidget);
       expect(find.text('Tableau de bord'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('assistant de configuration : admin sur une base neuve @ $label', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: _overrides(_admin, setupCompleted: false),
+          child: const CosbimpApp(),
+        ),
+      );
+      appRouter.go('/dashboard');
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      expect(
+        find.text('Configuration de votre établissement'),
+        findsOneWidget,
+      );
+      expect(find.text('Tableau de bord'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('assistant de configuration : bloqué pour un caissier @ $label', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: _overrides(_caissier, setupCompleted: false),
+          child: const CosbimpApp(),
+        ),
+      );
+      appRouter.go('/dashboard');
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      expect(
+        find.text('Configuration de votre établissement'),
+        findsNothing,
+      );
+      expect(find.text('Tableau de bord'), findsNothing);
+      expect(
+        find.textContaining("n'est pas encore configurée"),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
 

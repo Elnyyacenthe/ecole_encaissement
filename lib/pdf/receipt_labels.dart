@@ -52,8 +52,60 @@ class ReceiptLabels {
     required this.niveauLabel,
   });
 
-  static ReceiptLabels forSection(Section section) =>
-      section == Section.francophone ? fr : en;
+  /// [schoolName]/[schoolBox]/[schoolPhone] are the school's raw, language-
+  /// neutral identity (configured once per installation); left null they
+  /// fall back to the built-in defaults so printing never breaks before
+  /// that configuration exists.
+  static ReceiptLabels forSection(
+    Section section, {
+    String? schoolName,
+    String? schoolBox,
+    String? schoolPhone,
+  }) {
+    final base = section == Section.francophone ? fr : en;
+    if (schoolName == null && schoolBox == null && schoolPhone == null) {
+      return base;
+    }
+    final isFr = section == Section.francophone;
+    return base._copyWith(
+      schoolName: schoolName,
+      address: schoolBox == null
+          ? null
+          : (isFr ? 'B.P. $schoolBox' : 'P.O. Box $schoolBox'),
+      phone: schoolPhone == null
+          ? null
+          : (isFr ? 'Tél. $schoolPhone' : 'Tel. $schoolPhone'),
+    );
+  }
+
+  ReceiptLabels _copyWith({
+    String? schoolName,
+    String? address,
+    String? phone,
+  }) => ReceiptLabels(
+    schoolName: schoolName ?? this.schoolName,
+    address: address ?? this.address,
+    phone: phone ?? this.phone,
+    title: title,
+    invoiceNumber: invoiceNumber,
+    dateTime: dateTime,
+    operator: operator,
+    student: student,
+    matricule: matricule,
+    classe: classe,
+    niveau: niveau,
+    item: item,
+    netAPayer: netAPayer,
+    montantPaye: montantPaye,
+    difference: difference,
+    resteSurAnnee: resteSurAnnee,
+    dueDate: dueDate,
+    totalPaidToday: totalPaidToday,
+    cancelledBanner: cancelledBanner,
+    cancelledReason: cancelledReason,
+    posteLabel: posteLabel,
+    niveauLabel: niveauLabel,
+  );
 
   static const fr = ReceiptLabels(
     schoolName: 'Complexe Scolaire Bilingue Mariane et Paul',

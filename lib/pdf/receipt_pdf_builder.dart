@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../core/utils/formatters.dart';
 import '../models/classe.dart';
 import '../models/receipt_data.dart';
+import '../models/school_identity.dart';
 import 'pdf_widgets.dart';
 import 'receipt_labels.dart';
 
@@ -34,9 +35,15 @@ Future<Uint8List> buildReceiptPdf(
   ReceiptData data, {
   Uint8List? logo,
   PdfPageFormat? format,
+  SchoolIdentity? identity,
 }) async {
   format ??= receiptPageFormat(data);
-  final labels = ReceiptLabels.forSection(Section.fromDb(data.student.section));
+  final labels = ReceiptLabels.forSection(
+    Section.fromDb(data.student.section),
+    schoolName: identity?.name,
+    schoolBox: identity?.box,
+    schoolPhone: identity?.phone,
+  );
   final niveau = Niveau.fromDb(data.student.niveau);
   final doc = pw.Document(title: '${labels.title} ${data.invoiceNumber}');
   doc.addPage(

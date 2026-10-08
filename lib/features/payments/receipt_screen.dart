@@ -61,6 +61,7 @@ class ReceiptScreen extends ConsumerWidget {
               build: (format) async => buildReceiptPdf(
                 d,
                 logo: await loadLogoBytes(ref),
+                identity: await loadSchoolIdentity(ref),
                 format: format,
               ),
             ),

@@ -1,4 +1,3 @@
-import '../../models/classe.dart';
 import '../../models/tariff.dart';
 import '../../repositories/users_repository.dart';
 import 'mysql_connection_service.dart';
@@ -298,13 +297,34 @@ Future<void> bootstrapDatabase(MySqlConnectionService db) async {
     }
   }
 
-  var order = 0;
-  for (final c in Classe.seedData) {
-    order++;
+  // Classes are no longer auto-seeded for every install: a brand-new school
+  // defines its own list through the first-launch setup assistant. An
+  // install that already has classes predates the assistant — treat it as
+  // already configured (never show the wizard) and backfill the identity
+  // settings it implicitly had (same school name/box/phone/prefix as
+  // before, now just stored instead of hard-coded), so nothing it prints
+  // changes.
+  final classCount = await db.select('SELECT COUNT(*) AS n FROM classes');
+  final hasClasses = ((classCount.first['n'] as num).toInt()) > 0;
+  final alreadySetup = await db.select(
+    "SELECT 1 FROM app_settings WHERE setting_key = 'setup_completed'",
+  );
+  if (hasClasses && alreadySetup.isEmpty) {
     await db.execute(
-      'INSERT IGNORE INTO classes (name, section, level, display_order) VALUES (?, ?, ?, ?)',
-      [c.name, c.section.dbValue, c.niveau.dbValue, order],
+      "INSERT IGNORE INTO app_settings (setting_key, setting_value) "
+      "VALUES ('setup_completed', '1')",
     );
+    for (final kv in const {
+      'school_name': 'Complexe Scolaire Bilingue Mariane et Paul',
+      'school_box': '4362 Yaoundé',
+      'school_phone': '+237677758166',
+      'matricule_prefix': 'MP',
+    }.entries) {
+      await db.execute(
+        'INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)',
+        [kv.key, kv.value],
+      );
+    }
   }
 
   await db.execute(

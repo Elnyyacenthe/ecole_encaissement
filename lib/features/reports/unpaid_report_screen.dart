@@ -33,6 +33,7 @@ Future<void> _printIndividualNotices(
   final bytes = await buildIndividualNoticesPdf(
     notices: notices,
     logo: await loadLogoBytes(ref),
+    identity: await loadSchoolIdentity(ref),
   );
   final name = notices.length == 1
       ? 'note_${notices.first.row.matricule}.pdf'
@@ -83,6 +84,7 @@ class UnpaidReportScreen extends ConsumerWidget {
                     schoolYearLabel: year.label,
                     asOf: filter.asOf,
                     logo: await loadLogoBytes(ref),
+                    identity: await loadSchoolIdentity(ref),
                     classeLabel: classeLabel,
                   );
                   await Printing.layoutPdf(

@@ -47,11 +47,12 @@ class SequenceService {
 
   static Future<String> nextMatricule(
     TransactionContext ctx,
-    String schoolYearLabel,
-  ) async {
+    String schoolYearLabel, {
+    required String prefix,
+  }) async {
     final seq = await next(ctx, matriculeKey(schoolYearLabel));
     final yearSuffix = schoolYearLabel.substring(2, 4);
-    return '${yearSuffix}MP${seq.toString().padLeft(3, '0')}';
+    return '$yearSuffix$prefix${seq.toString().padLeft(3, '0')}';
   }
 
   static Future<int> nextInvoiceNumber(TransactionContext ctx) =>

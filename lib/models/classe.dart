@@ -59,8 +59,10 @@ class Classe {
     displayOrder: row['display_order'] as int,
   );
 
-  /// The 40 fixed classes required by the COSBIMP curriculum, seeded once at
-  /// database bootstrap. This list is not user-editable in the app.
+  /// COSBIMP's own 19 classes — offered as an editable starting template by
+  /// the first-launch setup assistant, not auto-seeded for every school
+  /// anymore (see [bootstrapDatabase]). Classes are otherwise a normal,
+  /// per-installation table managed via [ClassesRepository].
   static const List<({String name, Section section, Niveau niveau})>
   seedData = [
     // Francophone — Maternelle

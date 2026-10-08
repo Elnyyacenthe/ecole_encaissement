@@ -9,10 +9,12 @@ import '../models/payment.dart';
 import '../models/payment_situation.dart';
 import '../models/promotion.dart';
 import '../models/receipt_data.dart';
+import '../models/school_identity.dart';
 import '../models/school_year.dart';
 import '../models/student.dart';
 import '../models/tariff.dart';
 import '../repositories/reports_repository.dart';
+import '../repositories/settings_repository.dart';
 import 'db_providers.dart';
 
 /// Logo saved in the database; null until one is chosen (or while the
@@ -20,6 +22,35 @@ import 'db_providers.dart';
 final logoBytesProvider = FutureProvider<Uint8List?>((ref) async {
   if (!ref.watch(dbReadyProvider).hasValue) return null;
   return ref.watch(settingsRepositoryProvider).loadLogo();
+});
+
+/// Name/box/phone/matricule prefix the school configured — see
+/// [SchoolIdentity]; falls back to built-in defaults (null name/box/phone,
+/// "MP" prefix) while the database is still connecting.
+final schoolIdentityProvider = FutureProvider<SchoolIdentity>((ref) async {
+  if (!ref.watch(dbReadyProvider).hasValue) {
+    return const SchoolIdentity(
+      matriculePrefix: SettingsRepository.defaultMatriculePrefix,
+    );
+  }
+  final repo = ref.watch(settingsRepositoryProvider);
+  final name = await repo.getText(SettingsRepository.keySchoolName);
+  final box = await repo.getText(SettingsRepository.keySchoolBox);
+  final phone = await repo.getText(SettingsRepository.keySchoolPhone);
+  final prefix = await repo.matriculePrefix();
+  return SchoolIdentity(
+    name: name,
+    box: box,
+    phone: phone,
+    matriculePrefix: prefix,
+  );
+});
+
+/// True once the first-launch setup assistant has run (or an existing
+/// installation was migrated straight to "already configured").
+final setupCompletedProvider = FutureProvider<bool>((ref) async {
+  await ref.watch(dbReadyProvider.future);
+  return ref.watch(settingsRepositoryProvider).isSetupCompleted();
 });
 
 final classesProvider = FutureProvider<List<Classe>>((ref) async {

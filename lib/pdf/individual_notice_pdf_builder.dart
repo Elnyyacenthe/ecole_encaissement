@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../core/utils/formatters.dart';
 import '../models/classe.dart';
 import '../models/payment_situation.dart';
+import '../models/school_identity.dart';
 import '../models/tariff.dart';
 import '../repositories/reports_repository.dart';
 import 'pdf_widgets.dart';
@@ -64,6 +65,7 @@ class _NoticeLabels {
 Future<Uint8List> buildIndividualNoticesPdf({
   required List<NoticeData> notices,
   Uint8List? logo,
+  SchoolIdentity? identity,
 }) async {
   final doc = pw.Document(
     title: notices.length == 1
@@ -75,7 +77,12 @@ Future<Uint8List> buildIndividualNoticesPdf({
   for (final notice in notices) {
     final section = Section.fromDb(notice.row.section);
     final niveau = Niveau.fromDb(notice.row.niveau);
-    final labels = ReceiptLabels.forSection(section);
+    final labels = ReceiptLabels.forSection(
+      section,
+      schoolName: identity?.name,
+      schoolBox: identity?.box,
+      schoolPhone: identity?.phone,
+    );
     final n = section == Section.francophone
         ? _NoticeLabels.fr
         : _NoticeLabels.en;

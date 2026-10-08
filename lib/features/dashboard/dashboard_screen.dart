@@ -15,11 +15,12 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final year = ref.watch(activeSchoolYearProvider);
     final stats = ref.watch(dashboardStatsProvider);
+    final identity = ref.watch(schoolIdentityProvider).value;
+    final schoolName = identity?.name ?? 'Complexe Scolaire Bilingue Mariane et Paul';
 
     return PageScaffold(
       title: 'Tableau de bord',
-      subtitle:
-          'Complexe Scolaire Bilingue Mariane et Paul - année scolaire ${year.value?.label ?? '-'}',
+      subtitle: '$schoolName - année scolaire ${year.value?.label ?? '-'}',
       child: ListView(
         children: [
           AsyncValueView(

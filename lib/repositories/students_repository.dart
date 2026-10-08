@@ -3,6 +3,7 @@ import 'package:mysql1/mysql1.dart';
 import '../core/db/mysql_connection_service.dart';
 import '../core/db/sequence_service.dart';
 import '../models/student.dart';
+import 'settings_repository.dart';
 
 const _selectStudent = '''
 SELECT s.id, s.matricule, s.full_name, s.classe_id, s.school_year_id, s.date_inscription,
@@ -196,7 +197,18 @@ class StudentsRepository {
         [schoolYearId],
       );
       final label = years.first['label'].toString();
-      final matricule = await SequenceService.nextMatricule(ctx, label);
+      final prefixRow = await ctx.query(
+        'SELECT setting_value FROM app_settings WHERE setting_key = ?',
+        [SettingsRepository.keyMatriculePrefix],
+      );
+      final prefix = prefixRow.isEmpty
+          ? SettingsRepository.defaultMatriculePrefix
+          : prefixRow.first['setting_value'].toString();
+      final matricule = await SequenceService.nextMatricule(
+        ctx,
+        label,
+        prefix: prefix,
+      );
       try {
         final res = await ctx.query(
           'INSERT INTO students (matricule, full_name, classe_id, school_year_id, '
